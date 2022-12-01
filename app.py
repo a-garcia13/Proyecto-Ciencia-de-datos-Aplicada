@@ -103,7 +103,7 @@ def main():
                 if semestre_2 == 'Primer Semestre 2024':
                     first_semester = 1
                     second_semester = 0
-                contain_values = countries[countries['Country'] == country]
+                contain_values = countries[countries['Country'] == country_2]
                 contain_values = contain_values[['Region 1', 'Region 2', 'Continent', 'Official Language', 'Country']].reset_index().drop('index',  axis=1)
                 contain_values = contain_values.drop_duplicates().reset_index().drop('index',  axis=1)
                 contain_values = new_institution(institutions, contain_values, promedio, generales, especificos, first_semester, second_semester, languajes, program, stay_opportunites)
