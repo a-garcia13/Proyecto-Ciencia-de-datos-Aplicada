@@ -23,7 +23,7 @@ import itertools
 
 
 def main():
-    institutions, X_train, y_train, X_test, y_test = preprocess()
+    countries, courses, languages, institutions, X_train, y_train, X_test, y_test = preprocess()
     random = model(X_train, y_train)
     st.title('Sistema de proyeción de postulaciones semestrales para negociación de cupos')
     option = st.sidebar.selectbox('Options:',
@@ -60,12 +60,12 @@ def main():
             with col3:
                 institution = st.selectbox('Institución:', institutions["Institution"].sort_values().unique())
             with col4:
-                semestre_2 = st.selectbox("Semestre:", ['Primer Semestre 2024', 'Segundo Semestre 2024'])
-            submit_button_2 = st.form_submit_button(label='Estimar')
-            if submit_button_2:
+                semestre_3 = st.selectbox("Semestre:", ['Primer Semestre 2024', 'Segundo Semestre 2024'])
+            submit_button_3 = st.form_submit_button(label='Estimar')
+            if submit_button_3:
                 first_semester = 0
                 second_semester = 1
-                if semestre_2 == 'Primer Semestre 2024':
+                if semestre_3 == 'Primer Semestre 2024':
                     first_semester = 1
                     second_semester = 0
                 contain_values = institutions[institutions['Institution'] == institution]
@@ -73,6 +73,43 @@ def main():
                 contain_values['Sem_Second Semester'] = second_semester
                 ready = process(contain_values)
                 result = pd.DataFrame(random.predict(ready), columns=['Numero de postulaciones estimado'])
+                df1 = contain_values[['Country', 'Institution']].reset_index().drop('index',  axis=1)
+                df1 = pd.concat([df1, result], axis=1)
+                df1 = df1.drop_duplicates()
+                st.write(df1)
+
+    if option == 'Institución nueva':
+        # se necesita: pais, gpa minimo, idioma(s), numero de convenios especificos y generales, numero de so, programas, semestre.
+        st.subheader("Institución nueva:")
+        with st.form("form_3"):
+            col5, col6 = st.columns([3, 3])
+            with col5:
+                universidad = st.text_input('Nombre de la universidad')
+                country_2 = st.selectbox('País:', countries["Country"].sort_values().unique())
+                promedio = st.number_input("Promedio Minimo sobre 4:", 2.6, 4.0, step=0.1, format="%.2f")
+                generales = st.number_input("Numero de convenios generales", 0.0, 5.0, step=1.0, format="%.2f")
+                especificos = st.number_input("Numero de convenios especificos", 0.0, 12.0, step=1.0, format="%.2f")
+            with col6:
+                semestre_2 = st.selectbox("Semestre:", ['Primer Semestre 2024', 'Segundo Semestre 2024'])
+                languajes = st.multiselect("Idiomas disponibles para intercambios:",
+                                          languages['Language'].sort_values().unique())
+                stay_opportunites = st.number_input("Numero de Stay Opportunities", 0.0, 20.0, step=1.0, format="%.2f")
+                program = st.multiselect('Programas con convenios especificos:',
+                                       courses["Name"].sort_values().unique())
+            submit_button_2 = st.form_submit_button(label='Estimar')
+            if submit_button_2:
+                first_semester = 0
+                second_semester = 1
+                if semestre_2 == 'Primer Semestre 2024':
+                    first_semester = 1
+                    second_semester = 0
+                contain_values = countries[countries['Country'] == country]
+                contain_values = contain_values[['Region 1', 'Region 2', 'Continent', 'Official Language', 'Country']].reset_index().drop('index',  axis=1)
+                contain_values = contain_values.drop_duplicates().reset_index().drop('index',  axis=1)
+                contain_values = new_institution(institutions, contain_values, promedio, generales, especificos, first_semester, second_semester, languajes, program, stay_opportunites)
+                result = pd.DataFrame(random.predict(contain_values), columns=['Numero de postulaciones estimado'])
+                uni = pd.DataFrame(universidad, columns=['Institution'])
+                contain_values = pd.concat([contain_values, uni])
                 df1 = contain_values[['Country', 'Institution']].reset_index().drop('index',  axis=1)
                 df1 = pd.concat([df1, result], axis=1)
                 df1 = df1.drop_duplicates()
@@ -88,6 +125,11 @@ def preprocess():
 
     url_institutions = 'https://github.com/a-garcia13/Proyecto-Ciencia-de-datos-Aplicada/blob/main/Data/Institutions%20(Sat%20Sep%2017%202022).xlsx?raw=true'
     institutions = pd.read_excel(url_institutions)
+    countries = institutions.copy()
+
+    url_courses = 'https://github.com/a-garcia13/Proyecto-Ciencia-de-datos-Aplicada/blob/main/Data/Courses%20(Wed%20Nov%2002%202022).xlsx?raw=true'
+    # Datos de los pregrados con sus respectivas facultades y departamentos
+    courses = pd.read_excel(url_courses)
 
     url_relations = 'https://github.com/a-garcia13/Proyecto-Ciencia-de-datos-Aplicada/blob/main/Data/Relations%20(Sat%20Sep%2017%202022).xlsx?raw=true'
     relations = pd.read_excel(url_relations)
@@ -155,6 +197,7 @@ def preprocess():
     label = data['Languages']
     mlb = MultiLabelBinarizer()
     one_hot = pd.DataFrame(data=mlb.fit_transform(label), columns=mlb.classes_)
+    languages = pd.DataFrame(mlb.classes_, columns=['Language'])
     data.reset_index(drop=True, inplace=True)
     one_hot.reset_index(drop=True, inplace=True)
     data = pd.concat([data, one_hot], axis=1)
@@ -225,12 +268,27 @@ def preprocess():
     X_train, y_train = train.drop(['Mean'], axis=1), train['Mean']
     X_test, y_test = test.drop(['Mean'], axis=1), test['Mean']
 
-    return institutions, X_train, y_train, X_test, y_test
+    return countries, courses, languages, institutions, X_train, y_train, X_test, y_test
 
 @st.experimental_singleton
 def process(data):
     data = data.drop(['Continent', 'Region 1', 'Start period', 'Country', 'Institution', 'Institution: ID', 'City', 'Other Bsc', 'Mean'], axis=1)
     return data
+
+@st.experimental_singleton
+def new_institution(data, pais, promedio, generales, especificos, semestre_1, semestre_2, lenguajes, programas, stays):
+
+    pais['Reach_Specific agreement'] = especificos
+    pais['SO Count'] = stays
+    pais['Reach_University wide'] = generales
+    pais['Minimum GPA/4'] = promedio
+    pais['Sem_First Semester'] = semestre_1
+    pais['Sem_Second Semester'] = semestre_2
+
+    latin = pais['Region 2']
+
+
+    return pais
 
 @st.experimental_singleton
 def model(X_train, y_train):
