@@ -27,7 +27,7 @@ def main():
     random = model(X_train, y_train)
     st.title('Sistema de proyeción de postulaciones semestrales para negociación de cupos')
     option = st.sidebar.selectbox('Options:',
-                                  ['Proyeción por país', 'Proyeción por institución'])
+                                  ['Proyeción por país', 'Proyeción por institución', 'Institución nueva'])
     if option == 'Proyeción por país':
         st.subheader("Proyección por país:")
         with st.form("form_1"):
@@ -35,20 +35,20 @@ def main():
             with col1:
                 country = st.selectbox('País:', institutions["Country"].sort_values().unique())
             with col2:
-                semestre_1 = st.selectbox("Semestre:", [1, 2])
+                semestre_1 = st.selectbox("Semestre:", ['Primer Semestre 2024', 'Segundo Semestre 2024'])
             submit_button_1 = st.form_submit_button(label='Estimar')
             if submit_button_1:
                 first_semester = 0
                 second_semester = 1
-                if semestre_1 == 1:
+                if semestre_1 == 'Primer Semestre 2024':
                     first_semester = 1
                     second_semester = 0
                 contain_values = institutions[institutions['Country'] == country]
-                contain_values['Start period_First Semester'] = first_semester
-                contain_values['Start period_Second Semester'] = second_semester
+                contain_values['Sem_First Semester'] = first_semester
+                contain_values['Sem_Second Semester'] = second_semester
                 ready = process(contain_values)
-                result = pd.DataFrame(random.predict(ready), columns=['Numero de postulaciones'])
-                df1 = contain_values[['Country', 'Institution']]
+                result = pd.DataFrame(random.predict(ready), columns=['Numero de postulaciones estimado'])
+                df1 = contain_values[['Country', 'Institution']].reset_index().drop('index',  axis=1)
                 df1 = pd.concat([df1, result], axis=1)
                 df1 = df1.drop_duplicates()
                 st.write(df1)
@@ -60,8 +60,23 @@ def main():
             with col3:
                 institution = st.selectbox('Institución:', institutions["Institution"].sort_values().unique())
             with col4:
-                semestre_2 = st.selectbox("Semestre:", [1, 2])
+                semestre_2 = st.selectbox("Semestre:", ['Primer Semestre 2024', 'Segundo Semestre 2024'])
             submit_button_2 = st.form_submit_button(label='Estimar')
+            if submit_button_2:
+                first_semester = 0
+                second_semester = 1
+                if semestre_2 == 'Primer Semestre 2024':
+                    first_semester = 1
+                    second_semester = 0
+                contain_values = institutions[institutions['Institution'] == institution]
+                contain_values['Sem_First Semester'] = first_semester
+                contain_values['Sem_Second Semester'] = second_semester
+                ready = process(contain_values)
+                result = pd.DataFrame(random.predict(ready), columns=['Numero de postulaciones estimado'])
+                df1 = contain_values[['Country', 'Institution']].reset_index().drop('index',  axis=1)
+                df1 = pd.concat([df1, result], axis=1)
+                df1 = df1.drop_duplicates()
+                st.write(df1)
 
 
 @st.experimental_singleton
