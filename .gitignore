@@ -7,6 +7,7 @@ __pycache__/
 *.so
 
 # Distribution / packaging
+.idea/
 .Python
 build/
 develop-eggs/
@@ -127,3 +128,15 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+.idea/vcs.xml
+.idea/Proyecto-Ciencia-de-datos-Aplicada.iml
+.idea/modules.xml
+.idea/misc.xml
+.idea/inspectionProfiles/Project_Default.xml
+.idea/inspectionProfiles/profiles_settings.xml
+.idea/vcs.xml
+.idea/Proyecto-Ciencia-de-datos-Aplicada.iml
+.idea/modules.xml
+.idea/misc.xml
+.idea/inspectionProfiles/Project_Default.xml
+.idea/inspectionProfiles/profiles_settings.xml
