@@ -98,6 +98,9 @@ def main():
                                        courses["Name"].sort_values().unique())
             submit_button_2 = st.form_submit_button(label='Estimar')
             if submit_button_2:
+                if languajes is None:
+                    languajes = []
+                    st.write('lista de idiomas vacia')
                 first_semester = 0
                 second_semester = 1
                 if semestre_2 == 'Primer Semestre 2024':
@@ -106,14 +109,11 @@ def main():
                 contain_values = countries[countries['Country'] == country_2]
                 contain_values = contain_values[['Region 1', 'Region 2', 'Continent', 'Official Language', 'Country']].reset_index().drop('index',  axis=1)
                 contain_values = contain_values.drop_duplicates().reset_index().drop('index',  axis=1)
-                contain_values = new_institution(institutions, contain_values, promedio, generales, especificos, first_semester, second_semester, languajes, program, stay_opportunites)
-                result = pd.DataFrame(random.predict(contain_values), columns=['Numero de postulaciones estimado'])
-                uni = pd.DataFrame(universidad, columns=['Institution'])
-                contain_values = pd.concat([contain_values, uni])
-                df1 = contain_values[['Country', 'Institution']].reset_index().drop('index',  axis=1)
-                df1 = pd.concat([df1, result], axis=1)
-                df1 = df1.drop_duplicates()
-                st.write(df1)
+                contain_values = new_institution(contain_values, promedio, generales, especificos, first_semester, second_semester, languajes, program, stay_opportunites)
+                result = random.predict(contain_values)
+                uni = pd.DataFrame(columns=['Country','Institution','Numero de postulaciones estimado'])
+                uni.loc[0] = [country_2, universidad, result]
+                st.write(uni)
 
 
 @st.experimental_singleton
@@ -276,17 +276,142 @@ def process(data):
     return data
 
 @st.experimental_singleton
-def new_institution(data, pais, promedio, generales, especificos, semestre_1, semestre_2, lenguajes, programas, stays):
+def new_institution(pais, promedio, generales, especificos, semestre_1, semestre_2, lenguajes, programas, stays):
+
+    latin = 0
+    if pais['Region 2'].iloc[0] == 'Latin America and the Caribbean':
+        latin = 1
+    pais = pais.drop('Region 2', axis=1)
+    # 'Region 1', 'Region 2', 'Continent', 'Official Language', 'Country'
+    pais['Latin America and the Caribbean'] = latin
+
+    pais['Minimum GPA/4'] = promedio
+
+    language_list = ['Aymara language', "Bokmål", 'Danish', 'Dutch', 'English', 'Finnish', 'French', 'German',
+                     'Indonesian', 'Italian', 'Japanese', 'Korean', 'Lule', 'Māori language', 'Norwegian', 'Nynorsk',
+                     'Polish', 'Portuguese', 'Quechuan languages', 'Romansh', 'Russian', 'Saami', 'Slovene language',
+                     'Spanish', 'Standard Chinese', 'Swedish']
+
+    values_language = []
+
+    for lang in language_list:
+        values_language.append(0)
+
+    official_lang = pais['Official Language'].iloc[0]
+
+    pais = pais.drop('Official Language', axis=1)
+
+    pos = 0
+    for lenguaj in language_list:
+        for lang in lenguajes:
+            if lang == lenguaj:
+                values_language[pos] = 1
+        if lenguaj == official_lang:
+            values_language[pos] = 1
+        pos = pos + 1
+
+    temp_df = pd.DataFrame(columns=language_list)
+    temp_df.loc[0] = values_language
+    pais = pd.concat([pais, temp_df], axis=1)
 
     pais['Reach_Specific agreement'] = especificos
-    pais['SO Count'] = stays
     pais['Reach_University wide'] = generales
-    pais['Minimum GPA/4'] = promedio
+    pais['SO Count'] = stays
+
+    degree_list = ['Administration Bsc', 'Anthropology Bsc', 'Architecture Bsc', 'Art History Bsc', 'Arts Bsc',
+                   'Biology Bsc',
+                   'Biomedical Engineering Bsc', 'Chemical Engineering Bsc', 'Chemistry Bsc', 'Civil Engineering Bsc',
+                   'Design Bsc',
+                   'Digital Narrative Bsc', 'Economics Bsc', 'Education Bsc / Arts', 'Education Bsc / Biology',
+                   'Education Bsc / Early Childhood',
+                   'Education Bsc / History', 'Education Bsc / Humanities', 'Education Bsc / Mathematics',
+                   'Education Bsc / Philosophy',
+                   'Education Bsc / Spanish and Philology', 'Electrical Engineering Bsc', 'Electronic Engineering Bsc',
+                   'Environmental Engineering Bsc', 'Geosciences Bsc', 'Global Studies Bsc',
+                   'Government and Public Policy Bsc',
+                   'History Bsc', 'Industrial Engineering Bsc', 'International Accounting Bsc',
+                   'Languages and Culture Bsc',
+                   'Law Bsc', 'Literature Bsc', 'Mathematics Bsc', 'Mechanical Engineering Bsc', 'Microbiology Bsc',
+                   'Music Bsc',
+                   'Philosophy Bsc', 'Physics Bsc', 'Political Science Bsc', 'Psychology Bsc',
+                   'Systems and Computing Engineering Bsc']
+
+    values_degree = []
+
+    for degree in degree_list:
+        if generales > 0:
+            values_degree.append(1)
+        else:
+            values_degree.append(0)
+
+    for program in programas:
+        pos = 0
+        for degree in degree_list:
+            if program == degree:
+                values_degree[pos] = values_degree[pos] + 1
+            pos = pos + 1
+
+    temp_df = pd.DataFrame(columns=degree_list)
+    temp_df.loc[0] = values_degree
+    pais = pd.concat([pais, temp_df], axis=1)
+
+    country_list = ['Country_Argentina',
+                    'Country_Australia', 'Country_Belgium', 'Country_Brazil', 'Country_Canada', 'Country_Chile',
+                    'Country_China', 'Country_Colombia', 'Country_Costa Rica', 'Country_Denmark',
+                    'Country_Dominican Republic',
+                    'Country_Finland', 'Country_France', 'Country_Germany', 'Country_Indonesia', 'Country_Italy',
+                    'Country_Japan', 'Country_Korea, Republic of', 'Country_Mexico', 'Country_Netherlands',
+                    'Country_New Zealand',
+                    'Country_Norway', 'Country_Peru', 'Country_Poland', 'Country_Portugal',
+                    'Country_Russian Federation', 'Country_Slovenia', 'Country_Spain', 'Country_Sweden', 'Country_Switzerland', 'Country_Taiwan',
+                    'Country_United Kingdom', 'Country_United States', 'Country_Uruguay']
+
+    values_country = []
+
+    for country in country_list:
+        if pais['Country'].iloc[0] in country:
+            values_country.append(1)
+        else:
+            values_country.append(0)
+
+    temp_df = pd.DataFrame(columns=country_list)
+    temp_df.loc[0] = values_country
+    pais = pd.concat([pais, temp_df], axis=1)
+    pais = pais.drop('Country', axis=1)
+
     pais['Sem_First Semester'] = semestre_1
     pais['Sem_Second Semester'] = semestre_2
 
-    latin = pais['Region 2']
+    region_list = ['Region_Australia and New Zealand', 'Region_Caribbean', 'Region_Central America',
+                    'Region_Eastern Asia', 'Region_Eastern Europe', 'Region_Northern America', 'Region_Northern Europe',
+                    'Region_South America', 'Region_South-eastern Asia', 'Region_Southern Europe', 'Region_Western Europe']
+    values_region = []
 
+    for region in region_list:
+        if pais['Region 1'].iloc[0] in region:
+            values_region.append(1)
+        else:
+            values_region.append(0)
+
+    temp_df = pd.DataFrame(columns=region_list)
+    temp_df.loc[0] = values_region
+    pais = pd.concat([pais, temp_df], axis=1)
+    pais = pais.drop('Region 1', axis=1)
+
+    continent_list = ['Continent_Asia', 'Continent_Europe', 'Continent_North America',	'Continent_Oceania',
+                      'Continent_South America']
+    values_continent = []
+
+    for continent in continent_list:
+        if pais['Continent'].iloc[0] in continent:
+            values_continent.append(1)
+        else:
+            values_continent.append(0)
+
+    temp_df = pd.DataFrame(columns=continent_list)
+    temp_df.loc[0] = values_continent
+    pais = pd.concat([pais, temp_df], axis=1)
+    pais = pais.drop('Continent', axis=1)
 
     return pais
 
